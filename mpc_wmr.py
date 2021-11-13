@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 show_animation = True
 
 # State: x, y, yaw, vx, vy, w
-class wmr_state:
+class wmr_state: # Define wmr model state
     def __init__(self, x = 0, y = 0 , yaw = 0):
         self.x = x
         self.y = y
@@ -15,7 +15,7 @@ class wmr_state:
         self.v = 0
         self.w = 0
     
-    def update(self, v = 0, w = 0, dt = 0.01):
+    def update(self, v = 0, w = 0, dt = 0.01): # Update wmr model with input
         # Save v and w
         self.v = v  # velocity: u(1)
         self.w = w  # angular velocity: u(2)
@@ -24,7 +24,7 @@ class wmr_state:
         self.x = self.x +self.v*m.cos(self.yaw)*dt
         self.y = self.y + self.v*m.sin(self.yaw)*dt
 
-        if show_animation:
+        if show_animation: # Update animation by plotting
             # plt.plot(self.x, self.y, '.r')
             plt.arrow(self.x, self.y, np.cos(self.yaw), np.sin(self.yaw), color='r', width=0.01)
             plt.pause(0.0001)
@@ -32,7 +32,7 @@ class wmr_state:
     def state(self):
         curr_state = np.array([[self.x], [self.y], [self.yaw]])
         return curr_state
-class wmr_states:
+class wmr_states: # Save and append states and inputs
     def __init__(self):
         self.x = []
         self.y = []
@@ -48,7 +48,7 @@ class wmr_states:
         self.v.append(state.v)
         self.w.append(state.w)
 
-class lmpc_wmr:
+class lmpc_wmr: # Define linearized model predictive control
     def __init__(self, x_ref, u_ref, dt):
         self.t = 0
         self.dt = dt
@@ -59,7 +59,7 @@ class lmpc_wmr:
         self.x = np.zeros((3,1)) # Reference x
         self.u = np.zeros((2,1)) # Reference u
 
-    def updateModelState(self, v, w, dt, t):
+    def updateModelState(self, v, w, dt, t): 
         self.wmr_ref.update(v, w, dt) 
         self.dt = dt
         self.t = t
@@ -71,7 +71,7 @@ class lmpc_wmr:
         self.u[0,0] = self.wmr_ref.v 
         self.u[1,0] = self.wmr_ref.yaw
 
-    def compute_lmat(self, t):
+    def compute_lmat(self, t): # Compute linearized matrix
         """
         Compute linearized matrix from time 
         """    
@@ -90,7 +90,7 @@ class lmpc_wmr:
 
         return Ar, Br
 
-    def multiply_A(self, t, step, u):
+    def multiply_A(self, t, step, u): # Compute pi A
         """
         Compute matrices multiplied A
         Input:
@@ -112,7 +112,7 @@ class lmpc_wmr:
                 # print("Aout: ",Aout)
         return Aout
 
-    def compute_Abar(self, t, step):
+    def compute_Abar(self, t, step): # Compute Abar by multiplying A
         len_index = int(len(self.x_ref)*self.dt)
         N = step
         Aout = np.eye(3)
@@ -126,7 +126,7 @@ class lmpc_wmr:
             Abar = np.vstack((Abar, Aout))
         return Abar
         
-    def compute_Bbar(self, t, step):
+    def compute_Bbar(self, t, step): # Compute Bbar by multiplying A and B
         len_index = int(len(self.x_ref)*self.dt)
         N = step
 
@@ -146,7 +146,7 @@ class lmpc_wmr:
                 # print("Temp1: ", temp1)
             Bbar = np.hstack((Bbar, temp1))
         return Bbar
-    def lmpc_wmr_out(self, x, t, step):
+    def lmpc_wmr_out(self, x, t, step): # Implement mpc algorithm
         Abar = self.compute_Abar(t, step)
         Bbar = self.compute_Bbar(t, step)
  
@@ -156,26 +156,19 @@ class lmpc_wmr:
         w = 0
 
         n = step*2
-        # updateVec
-        # self.updateModelState(v, w, dt, t)
-        # self.updateVec()
+
 
         u  = cp.Variable((n,1))
-        # print("Abar shape: ", Abar.shape)
-        # print("Bbar shape: ", Bbar.shape)
-        # print("x size: ", self.x.shape)
-        # print("u size: ", u.shape)
+
         xbar = Abar@x + Bbar@u
         Q = np.eye(step*3)*1
         Q[2,2] = 0.5
         R = np.eye(step*2)*0.1
 
-        # obj = cp.Minimize(xbar@Q@(xbar.T)+u@R@(u.T))
         obj = cp.Minimize(cp.quad_form(xbar, Q)+ cp.quad_form(u, R))
         prob = cp.Problem(obj)
         prob.solve()
-        # print("Optimal value: ", prob.value)
-        # print("Optimal u: ", u.value)
+
         output = u.value
         out = output[0:2, 0]
         return out
@@ -205,12 +198,7 @@ if __name__ == '__main__':
 
     ref_u = np.vstack((ref_v, ref_w))
     ctrl_mpc = lmpc_wmr(ref_tra, ref_u, dt)
-    # print("Multiplied A: ",ctrl_mpc.multiply_A(0.2, 1, 1))
-    # print("A_bar: ", ctrl_mpc.compute_Abar(0, 5))
 
-    # print("B_bar: " , ctrl_mpc.compute_Bbar(0.2, 2))
-    # ctrl_mpc.lmpc_wmr_out(wmr1.state(), t, 3)
-    # ctrl_mpc
     height, width = ref_tra.shape
     len_index = int(width*dt)
 
@@ -242,6 +230,7 @@ if __name__ == '__main__':
             plt.ylabel('y position (m)')
         # plt.show()
         
+    # Plot states and Inputs
     fig1 = plt.figure()
     # print("t_mat: ",t_mat)
     # print("t_mat: ", t_mat.shape)
